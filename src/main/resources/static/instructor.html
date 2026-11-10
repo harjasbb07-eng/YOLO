@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Instructor Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Added Bootstrap JS for the modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="bg-light p-4">
+    <div class="container">
+        <h2>Create Assignment</h2>
+        <form id="createAssignmentForm" class="bg-white p-4 rounded shadow-sm mb-5">
+            <input type="text" id="title" class="form-control mb-3" placeholder="Title" required>
+            <textarea id="description" class="form-control mb-3" placeholder="Description"></textarea>
+            <input type="number" id="timeLimit" class="form-control mb-3" placeholder="Time Limit (seconds)" required>
+            <!-- Updated Starter Code Field -->
+            <textarea id="starterCode" class="form-control mb-3" placeholder="Starter / Boilerplate Code (Optional)"></textarea>
+            <textarea id="testInput" class="form-control mb-3" placeholder="Test Case Input (.in)" required></textarea>
+            <textarea id="expectedOutput" class="form-control mb-3" placeholder="Expected Output (.out)" required></textarea>
+            <button type="submit" class="btn btn-primary">Create Assignment</button>
+        </form>
+
+        <h2>Plagiarism Check</h2>
+        <div class="bg-white p-4 rounded shadow-sm">
+            <select id="assignmentSelect" class="form-select mb-3"></select>
+            <button id="runCheckBtn" class="btn btn-danger mb-4">Run MOSS/Winnowing Similarity Check</button>
+            
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Student A</th>
+                        <th>Student B</th>
+                        <th>Similarity</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="similarityTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal for Side-by-Side Comparison -->
+    <div class="modal fade" id="compareModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Code Comparison</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body d-flex gap-3">
+                    <div class="w-50">
+                        <h6>Student A Code</h6>
+                        <pre id="codeABlock" class="bg-light p-3 border rounded" style="white-space: pre-wrap; font-family: monospace;"></pre>
+                    </div>
+                    <div class="w-50">
+                        <h6>Student B Code</h6>
+                        <pre id="codeBBlock" class="bg-light p-3 border rounded" style="white-space: pre-wrap; font-family: monospace;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load assignments for dropdown
+        fetch('http://localhost:8080/api/assignments')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('assignmentSelect');
+                data.forEach(a => select.innerHTML += `<option value="${a.id}">${a.title}</option>`);
+            });
+
+        // Create Assignment
+        document.getElementById('createAssignmentForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                timeLimit: parseInt(document.getElementById('timeLimit').value),
+                starterCode: document.getElementById('starterCode').value,
+                testInput: document.getElementById('testInput').value,
+                expectedOutput: document.getElementById('expectedOutput').value
+            };
+            await fetch('http://localhost:8080/api/assignments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            alert('Assignment Created!');
+        };
+
+        // Global variable to store results for the modal
+        let currentResults = [];
+
+        // Run Plagiarism Check
+        document.getElementById('runCheckBtn').onclick = async () => {
+            const id = document.getElementById('assignmentSelect').value;
+            const res = await fetch(`http://localhost:8080/api/assignments/${id}/plagiarism`);
+            currentResults = await res.json();
+            
+            const tbody = document.getElementById('similarityTableBody');
+            tbody.innerHTML = '';
+            currentResults.forEach((row, index) => {
+                // Updated Badges based on new requirements
+                const badge = row.flagged 
+                    ? '<span class="badge bg-danger">FLAGGED FOR REVIEW</span>' 
+                    : '<span class="badge bg-success">SAFE</span>';
+                
+                // Added Compare Button
+                const actionBtn = `<button class="btn btn-sm btn-outline-primary" onclick="showCompare(${index})">Compare Code</button>`;
+                
+                tbody.innerHTML += `<tr>
+                    <td>${row.studentRollA}</td>
+                    <td>${row.studentRollB}</td>
+                    <td>${row.similarityPercentage}%</td>
+                    <td>${badge}</td>
+                    <td>${actionBtn}</td>
+                </tr>`;
+            });
+        };
+
+        // Function to trigger the modal and load code
+        function showCompare(index) {
+            const data = currentResults[index];
+            document.getElementById('codeABlock').textContent = data.codeA;
+            document.getElementById('codeBBlock').textContent = data.codeB;
+            const modal = new bootstrap.Modal(document.getElementById('compareModal'));
+            modal.show();
+        }
+    </script>
+</body>
+</html>
