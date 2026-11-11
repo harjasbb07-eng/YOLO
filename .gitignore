@@ -35,4 +35,4 @@ target/
 *.exe
 temp_sub_*
 *.log
-.DS_Store
+.DS_Storedata/
