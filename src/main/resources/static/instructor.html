@@ -237,7 +237,7 @@
 
         let currentResults = [];
 
-        // 3. Run Plagiarism Check with empty-state handling & careful badge wording
+        // 3. Run Plagiarism Check with empty-state handling & orange flagged badge
         document.getElementById('runCheckBtn').onclick = async () => {
             const id = document.getElementById('assignmentSelect').value;
             const tbody = document.getElementById('similarityTableBody');
@@ -266,7 +266,7 @@
 
             currentResults.forEach((row, index) => {
                 const badge = row.flagged 
-                    ? '<span class="badge bg-danger">FLAGGED FOR REVIEW</span>' 
+                    ? '<span class="badge" style="background-color: #fd7e14; color: #ffffff;">FLAGGED FOR REVIEW</span>' 
                     : '<span class="badge bg-success">SAFE</span>';
                 
                 const actionBtn = `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.78rem;" onclick="showCompare(${index})">Compare Code</button>`;
