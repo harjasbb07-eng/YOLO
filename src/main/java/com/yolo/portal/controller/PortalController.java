@@ -63,27 +63,13 @@ public class PortalController {
         }
     }
 
-    // private synchronized void persistData() {
-    //     try {
-    //         mapper.writeValue(new File(DATA_FILE), new DataWrapper(assignments, submissions));
-    //     } catch (IOException e) {
-    //         System.err.println("Failed to save data: " + e.getMessage());
-    //     }
-    // }
     private synchronized void persistData() throws IOException {
         mapper.writeValue(new File(DATA_FILE), new DataWrapper(assignments, submissions));
     }
 
     // --- Endpoints ---
 
-    // @PostMapping("/assignments")
-    // public Assignment createAssignment(@RequestBody Assignment assignment) {
-    //     long id = assignmentIdCounter.incrementAndGet();
-    //     assignment.setId(id);
-    //     assignments.put(id, assignment);
-    //     persistData();
-    //     return assignment;
-    // }
+    
     @PostMapping("/assignments")
     public Assignment createAssignment(@RequestBody Assignment assignment) {
         if (assignment.getTimeLimit() <= 0) {
@@ -106,30 +92,7 @@ public class PortalController {
         return assignments.values();
     }
 
-    // @PostMapping("/submissions")
-    // public Submission submitCode(@RequestBody Submission submission) {
-    //     Assignment assignment = assignments.get(submission.getAssignmentId());
-    //     if (assignment == null) {
-    //         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
-    //     }
-
-    //     String verdict = judgeService.evaluateCppCode(
-    //             submission.getSourceCode(),
-    //             assignment.getTestInput(),
-    //             assignment.getExpectedOutput(),
-    //             assignment.getTimeLimit()
-    //     );
-
-    //     long subId = submissionIdCounter.incrementAndGet();
-    //     submission.setSubmissionId(subId);
-    //     submission.setVerdict(verdict);
-    //     submission.setSubmittedAt(LocalDateTime.now().toString());
-
-    //     submissions.put(subId, submission);
-    //     persistData();
-        
-    //     return submission;
-    // }
+    
     @PostMapping("/submissions")
     public Submission submitCode(@RequestBody Submission submission) {
         if (submission.getAssignmentId() == null || 
@@ -168,22 +131,14 @@ public class PortalController {
 
     @GetMapping("/assignments/{id}/plagiarism")
     public List<ComparisonResult> checkPlagiarism(@PathVariable Long id) {
+        // Restore the 404 Not Found check
         Assignment assignment = assignments.get(id);
-        // if (assignment == null) {
-        //     throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
-        // }
-        
-        // 1. Filter for only the latest submission per student roll number
-        Map<String, Submission> latestSubmissions = new HashMap<>();
-        for (Submission sub : submissions.values()) {
-            if (sub.getAssignmentId().equals(id)) {
-                Submission existing = latestSubmissions.get(sub.getStudentRollNo());
-                if (existing == null || sub.getSubmissionId() > existing.getSubmissionId()) {
-                    latestSubmissions.put(sub.getStudentRollNo(), sub);
-                }
-            }
+        if (assignment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
         }
-        
+
+        // 1. Filter for only the latest submission per student roll number (Single clean loop)
+        Map<String, Submission> latestSubmissions = new HashMap<>();
         for (Submission sub : submissions.values()) {
             if (id.equals(sub.getAssignmentId())) { // Null-safe equality check
                 Submission existing = latestSubmissions.get(sub.getStudentRollNo());

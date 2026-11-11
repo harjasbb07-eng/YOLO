@@ -75,8 +75,8 @@ public class JudgeService {
             }
 
             // 4. Capture and normalize stdout from file
-            String actualOutput = Files.exists(outFile) ? Files.readString(outFile).trim() : "";
-            String expectedNormalized = expectedOutput != null ? expectedOutput.replace("\r\n", "\n").trim() : "";
+            String actualOutput = Files.exists(outFile) ? normalize(Files.readString(outFile)) : "";
+            String expectedNormalized = normalize(expectedOutput);
 
             return actualOutput.equals(expectedNormalized) ? "AC" : "WA";
 
@@ -90,5 +90,13 @@ public class JudgeService {
             } catch (IOException ignored) {
             }
         }
+    }
+    private String normalize(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String line : s.replace("\r\n", "\n").split("\n", -1)) {
+            sb.append(line.stripTrailing()).append("\n");
+        }
+        return sb.toString().trim();
     }
 }
