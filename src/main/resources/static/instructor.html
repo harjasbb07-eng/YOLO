@@ -2,61 +2,198 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Instructor Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Dashboard | YOLO Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Added Bootstrap JS for the modal -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+        .dashboard-card {
+            border: 1px solid #e3e8ef;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+            background: #ffffff;
+        }
+        .card-header-custom {
+            background-color: #ffffff;
+            border-bottom: 1px solid #eaedf2;
+            padding: 1rem 1.25rem;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.3rem;
+        }
+        .code-textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+        }
+        .compact-table-wrapper {
+            max-width: 720px;
+        }
+        .table-compact th {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            background-color: #f8fafc;
+            padding: 0.55rem 0.75rem;
+        }
+        .table-compact td {
+            padding: 0.5rem 0.75rem;
+            vertical-align: middle;
+            font-size: 0.88rem;
+        }
+        .pair-badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .empty-state {
+            padding: 2.25rem 1rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
-<body class="bg-light p-4">
-    <div class="container">
-        <h2>Create Assignment</h2>
-        <form id="createAssignmentForm" class="bg-white p-4 rounded shadow-sm mb-5">
-            <input type="text" id="title" class="form-control mb-3" placeholder="Title" required>
-            <textarea id="description" class="form-control mb-3" placeholder="Description"></textarea>
-            <input type="number" id="timeLimit" class="form-control mb-3" placeholder="Time Limit (seconds)" required>
-            <!-- Updated Starter Code Field -->
-            <textarea id="starterCode" class="form-control mb-3" placeholder="Starter / Boilerplate Code (Optional)"></textarea>
-            <textarea id="testInput" class="form-control mb-3" placeholder="Test Case Input (.in)" required></textarea>
-            <textarea id="expectedOutput" class="form-control mb-3" placeholder="Expected Output (.out)" required></textarea>
-            <button type="submit" class="btn btn-primary">Create Assignment</button>
-        </form>
+<body>
 
-        <h2>Plagiarism Check</h2>
-        <div class="bg-white p-4 rounded shadow-sm">
-            <select id="assignmentSelect" class="form-select mb-3"></select>
-            <button id="runCheckBtn" class="btn btn-danger mb-4">Run MOSS/Winnowing Similarity Check</button>
-            
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Student A</th>
-                        <th>Student B</th>
-                        <th>Similarity</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="similarityTableBody"></tbody>
-            </table>
+    <!-- Top Portal Navbar -->
+    <nav class="navbar navbar-dark bg-dark px-4 py-2 mb-4 shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">YOLO &mdash; Instructor Portal</span>
+            <div class="d-flex gap-2">
+                <a href="student.html" class="btn btn-outline-light btn-sm">Switch to Student Portal</a>
+                <a href="index.html" class="btn btn-secondary btn-sm">Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 pb-5">
+        <div class="row g-4">
+
+            <!-- Left Column: Create Assignment Form -->
+            <div class="col-lg-5">
+                <div class="dashboard-card">
+                    <div class="card-header-custom">
+                        <h5 class="mb-0 fw-semibold text-dark">Create Assignment</h5>
+                        <small class="text-muted">Configure problem details, starter code, and I/O test cases</small>
+                    </div>
+                    <div class="p-4">
+                        <form id="createAssignmentForm">
+                            <div class="row g-3 mb-3">
+                                <div class="col-sm-8">
+                                    <label for="title" class="form-label">Assignment Title</label>
+                                    <input type="text" id="title" class="form-control form-control-sm" placeholder="e.g., Binary Search Lab" required>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label for="timeLimit" class="form-label">Time Limit (sec)</label>
+                                    <input type="number" id="timeLimit" class="form-control form-control-sm" placeholder="2" min="1" max="30" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea id="description" class="form-control form-control-sm" rows="2" placeholder="Implement iterative binary search in O(log N)..."></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="starterCode" class="form-label">Starter / Boilerplate Code</label>
+                                <textarea id="starterCode" class="form-control form-control-sm code-textarea" rows="4" placeholder="Optional starter / boilerplate code (excluded from similarity checks)..."></textarea>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-sm-6">
+                                    <label for="testInput" class="form-label">Test Case Input (.in)</label>
+                                    <textarea id="testInput" class="form-control form-control-sm code-textarea" rows="3" placeholder="5&#10;1 3 5 7 9&#10;5" required></textarea>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label for="expectedOutput" class="form-label">Expected Output (.out)</label>
+                                    <textarea id="expectedOutput" class="form-control form-control-sm code-textarea" rows="3" placeholder="2" required></textarea>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-sm w-100 py-2 fw-semibold">Create Assignment</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Similarity Check & Compact Results Table -->
+            <div class="col-lg-7">
+                <div class="dashboard-card h-100">
+                    <div class="card-header-custom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <h5 class="mb-0 fw-semibold text-dark">Similarity Review</h5>
+                            <small class="text-muted">Compare student submission pairs and inspect code side by side</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <select id="assignmentSelect" class="form-select form-select-sm" style="min-width: 200px;">
+                                <option value="" disabled selected>Select Assignment...</option>
+                            </select>
+                            <button id="runCheckBtn" class="btn btn-primary btn-sm text-nowrap px-3">Run Plagiarism Check</button>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="compact-table-wrapper">
+                            <div class="table-responsive border rounded">
+                                <table class="table table-sm table-hover table-compact mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 38%;">Student Pair</th>
+                                            <th style="width: 18%;">Similarity</th>
+                                            <th style="width: 26%;">Status</th>
+                                            <th style="width: 18%; text-align: right;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="similarityTableBody">
+                                        <tr>
+                                            <td colspan="4" class="empty-state">
+                                                Select an assignment and click <strong>Run Plagiarism Check</strong> to view pairwise results.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Modal for Side-by-Side Comparison -->
+    <!-- Modal for Side-by-Side Code Comparison -->
     <div class="modal fade" id="compareModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Code Comparison</h5>
+                <div class="modal-header bg-light">
+                    <h6 class="modal-title fw-bold" id="compareModalTitle">Side-by-Side Code Comparison</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body d-flex gap-3">
-                    <div class="w-50">
-                        <h6>Student A Code</h6>
-                        <pre id="codeABlock" class="bg-light p-3 border rounded" style="white-space: pre-wrap; font-family: monospace;"></pre>
-                    </div>
-                    <div class="w-50">
-                        <h6>Student B Code</h6>
-                        <pre id="codeBBlock" class="bg-light p-3 border rounded" style="white-space: pre-wrap; font-family: monospace;"></pre>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="fw-semibold text-secondary small mb-2" id="studentALabel">Student A Code</div>
+                            <pre id="codeABlock" class="bg-light p-3 border rounded code-textarea mb-0" style="white-space: pre-wrap; max-height: 65vh; overflow-y: auto;"></pre>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="fw-semibold text-secondary small mb-2" id="studentBLabel">Student B Code</div>
+                            <pre id="codeBBlock" class="bg-light p-3 border rounded code-textarea mb-0" style="white-space: pre-wrap; max-height: 65vh; overflow-y: auto;"></pre>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -64,15 +201,21 @@
     </div>
 
     <script>
-        // Load assignments for dropdown
-        fetch('http://localhost:8080/api/assignments')
+        // 1. Load assignments into dropdown using relative URL
+        fetch('/api/assignments')
             .then(res => res.json())
             .then(data => {
                 const select = document.getElementById('assignmentSelect');
-                data.forEach(a => select.innerHTML += `<option value="${a.id}">${a.title}</option>`);
-            });
+                if (data && data.length > 0) {
+                    select.innerHTML = '';
+                    data.forEach(a => {
+                        select.innerHTML += `<option value="${a.id}">${a.title}</option>`;
+                    });
+                }
+            })
+            .catch(() => {});
 
-        // Create Assignment
+        // 2. Create Assignment and reload page so dropdown updates immediately
         document.getElementById('createAssignmentForm').onsubmit = async (e) => {
             e.preventDefault();
             const payload = {
@@ -83,47 +226,66 @@
                 testInput: document.getElementById('testInput').value,
                 expectedOutput: document.getElementById('expectedOutput').value
             };
-            await fetch('http://localhost:8080/api/assignments', {
+            await fetch('/api/assignments', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
             alert('Assignment Created!');
+            location.reload();
         };
 
-        // Global variable to store results for the modal
         let currentResults = [];
 
-        // Run Plagiarism Check
+        // 3. Run Plagiarism Check with empty-state handling & careful badge wording
         document.getElementById('runCheckBtn').onclick = async () => {
             const id = document.getElementById('assignmentSelect').value;
-            const res = await fetch(`http://localhost:8080/api/assignments/${id}/plagiarism`);
-            currentResults = await res.json();
-            
             const tbody = document.getElementById('similarityTableBody');
+
+            if (!id) {
+                tbody.innerHTML = `<tr>
+                    <td colspan="4" class="empty-state">
+                        No assignment selected. Please create or select an assignment first.
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            const res = await fetch(`/api/assignments/${id}/plagiarism`);
+            currentResults = await res.json();
             tbody.innerHTML = '';
+
+            if (!currentResults || currentResults.length === 0) {
+                tbody.innerHTML = `<tr>
+                    <td colspan="4" class="empty-state">
+                        No plagiarism results available for this assignment yet (at least 2 student submissions are required).
+                    </td>
+                </tr>`;
+                return;
+            }
+
             currentResults.forEach((row, index) => {
-                // Updated Badges based on new requirements
                 const badge = row.flagged 
                     ? '<span class="badge bg-danger">FLAGGED FOR REVIEW</span>' 
                     : '<span class="badge bg-success">SAFE</span>';
                 
-                // Added Compare Button
-                const actionBtn = `<button class="btn btn-sm btn-outline-primary" onclick="showCompare(${index})">Compare Code</button>`;
+                const actionBtn = `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.78rem;" onclick="showCompare(${index})">Compare Code</button>`;
                 
                 tbody.innerHTML += `<tr>
-                    <td>${row.studentRollA}</td>
-                    <td>${row.studentRollB}</td>
-                    <td>${row.similarityPercentage}%</td>
+                    <td><span class="pair-badge">${row.studentRollA} &harr; ${row.studentRollB}</span></td>
+                    <td class="fw-semibold">${row.similarityPercentage}%</td>
                     <td>${badge}</td>
-                    <td>${actionBtn}</td>
+                    <td class="text-end">${actionBtn}</td>
                 </tr>`;
             });
         };
 
-        // Function to trigger the modal and load code
+        // 4. Side-by-side comparison modal using safe textContent
         function showCompare(index) {
             const data = currentResults[index];
+            document.getElementById('compareModalTitle').textContent = `Compare Code (${data.similarityPercentage}% Similarity)`;
+            document.getElementById('studentALabel').textContent = `Student A: ${data.studentRollA}`;
+            document.getElementById('studentBLabel').textContent = `Student B: ${data.studentRollB}`;
             document.getElementById('codeABlock').textContent = data.codeA;
             document.getElementById('codeBBlock').textContent = data.codeB;
             const modal = new bootstrap.Modal(document.getElementById('compareModal'));
