@@ -1,138 +1,75 @@
-# System Design Diagrams — Project YOLO
+# System Design & UML Diagrams (Project YOLO)
 
 ## 1. Use Case Diagram
 ```mermaid
 flowchart LR
-    subgraph Actors
-        I[Instructor]
-        S[Student]
+    Instructor([Instructor])
+    Student([Student])
+
+    subgraph YOLO_System ["Project YOLO - Code Assessment & Plagiarism Portal"]
+        UC1("Create Assignment & I/O Test Cases")
+        UC2("Configure Optional Starter Code")
+        UC3("Submit C++ Solution")
+        UC4("Compile & Evaluate Code Verdict")
+        UC5("Run Pairwise Plagiarism Check")
+        UC6("Filter by Flagged / Min Similarity % & Compare Code")
     end
 
-    subgraph YOLO_Portal [Project YOLO Web Portal]
-        UC1([Create C++ Assignment & I/O Test Cases])
-        UC2([Provide Optional Starter / Boilerplate Code])
-        UC3([Run Plagiarism Check])
-        UC4([View Similarity Report: FLAGGED FOR REVIEW / SAFE])
-        UC5([Compare Student Code Side-by-Side])
-        UC6([Select Assignment & Paste C++ Code])
-        UC7([View Instant Execution Verdict: AC / WA / TLE / CE / RE])
-    end
-
-    I --> UC1
-    UC1 -.->|includes| UC2
-    I --> UC3
+    Instructor --> UC1
+    Instructor --> UC2
+    Instructor --> UC5
+    Instructor --> UC6
+    Student --> UC3
     UC3 -.->|includes| UC4
-    UC4 -.->|extends| UC5
-    S --> UC6
-    UC6 -.->|includes| UC7
 ```
 
-## 2. Data Flow Diagram — Level 0 (Context Diagram)
-```mermaid
-flowchart LR
-    Instructor[Instructor] -- "Assignment Details, Starter Code, .in/.out" --> System((Project YOLO Portal))
-    System -- "Pairwise Similarity Scores, Status Badges & Side-by-Side Diff" --> Instructor
-    Student[Student] -- "Roll Number, Name, C++ Source Code" --> System
-    System -- "Execution Verdict (AC, WA, TLE, CE, RE)" --> Student
-```
-
-## 3. Data Flow Diagram — Level 1
-```mermaid
-flowchart TD
-    Instructor[Instructor] -->|POST /api/assignments| P1(1.0 Assignment Management)
-    P1 -->|Store Assignment| D1[(Assignments Store)]
-    
-    Student[Student] -->|POST /api/submissions| P2(2.0 JudgeService.evaluateCppCode)
-    D1 -->|Read testInput, expectedOutput, timeLimit| P2
-    P2 -->|Compile via g++ & Run with waitFor Timeout| P2
-    P2 -->|Save Submission & Verdict| D2[(Submissions Store)]
-    P2 -->|Return Verdict JSON| Student
-
-    Instructor -->|GET /api/assignments/id/plagiarism| P3(3.0 PlagiarismService Engine)
-    D1 -->|Read Starter Code| P3
-    D2 -->|Filter Latest Submission per Student| P3
-    P3 -->|On-the-fly: tokenize -> winnow k=5,w=4 -> 65% Dice + 35% LCS| P3
-    P3 -->|Sorted ComparisonResult List| Instructor
-```
-
-## 4. Sequence Diagrams
-
-### A. Student Code Submission & Judging Sequence
-```mermaid
-sequenceDiagram
-    actor S as Student
-    participant UI as student.html
-    participant C as PortalController
-    participant J as JudgeService
-
-    S->>UI: Select Assignment, Enter Roll No & Paste C++ Code
-    UI->>C: POST /api/submissions
-    C->>C: Lookup Assignment (testInput, expectedOutput, timeLimit)
-    C->>J: evaluateCppCode(sourceCode, testInput, expectedOutput, timeLimit)
-    J->>J: Write temp_sub_UUID.cpp & compile via g++
-    alt Compilation Fails (exitValue != 0)
-        J-->>C: Return "CE"
-    else Compilation Succeeds
-        J->>J: Run executable with waitFor(timeLimitSeconds)
-        alt Timeout Exceeded
-            J->>J: destroyForcibly()
-            J-->>C: Return "TLE"
-        else Completed Within Time Limit
-            J->>J: Normalize stdout & compare with expectedOutput
-            J-->>C: Return "AC" / "WA" / "RE"
-        end
-    end
-    J->>J: Delete temp files in finally block
-    C->>C: Save Submission & return JSON
-    C-->>UI: { submissionId, studentRollNo, verdict, submittedAt }
-    UI-->>S: Display Colored Verdict Alert
-```
-
-### B. On-the-Fly Plagiarism Check Sequence
-```mermaid
-sequenceDiagram
-    actor I as Instructor
-    participant UI as instructor.html
-    participant C as PortalController
-    participant P as PlagiarismService
-
-    I->>UI: Select Assignment & Click "Run Plagiarism Check"
-    UI->>C: GET /api/assignments/{id}/plagiarism
-    C->>C: Filter latest submission per unique studentRollNo
-    loop For each unique student pair (A, B)
-        C->>P: calculateSimilarity(codeA, codeB, starterCode)
-        P->>P: tokenize(codeA), tokenize(codeB), tokenize(starterCode)
-        P->>P: winnow(k=5, w=4) & subtract starterCode fingerprints
-        P->>P: Compute 65% Sorensen-Dice + 35% LCS
-        P-->>C: Return similarityPercentage (0.0 - 100.0)
-        C->>C: Set flagged = (similarityPercentage >= 75.0)
-    end
-    C->>C: Sort ComparisonResult list descending
-    C-->>UI: Return JSON Array
-    UI-->>I: Render Compact Pair Table & Compare Code Modal
-```
-
-## 5. Class Diagram
+## 2. Class Diagram
 ```mermaid
 classDiagram
+    class PortalController {
+        -List~Assignment~ assignments
+        -List~Submission~ submissions
+        -JudgeService judgeService
+        -PlagiarismService plagiarismService
+        +createAssignment(Assignment) Assignment
+        +getAllAssignments() List~Assignment~
+        +submitCode(Submission) Submission
+        +checkPlagiarism(Long assignmentId) List~ComparisonResult~
+    }
+
+    class JudgeService {
+        +evaluateCppCode(String sourceCode, String testInput, String expectedOutput, int timeLimitSeconds) String
+        -cleanupFiles(File... files) void
+    }
+
+    class PlagiarismService {
+        -int K = 5
+        -int W = 4
+        -double SIMILARITY_THRESHOLD = 75.0
+        +calculateSimilarity(String codeA, String codeB, String starterCode) double
+        -tokenize(String code) List~String~
+        -winnow(List~String~ tokens) Set~Long~
+        -computeLcsRatio(List~String~ tokensA, List~String~ tokensB) double
+    }
+
     class Assignment {
         -Long id
         -String title
         -String description
+        -int timeLimit
         -String starterCode
         -String testInput
         -String expectedOutput
-        -int timeLimit
     }
 
     class Submission {
-        -Long submissionId
+        -Long id
         -Long assignmentId
         -String studentRollNo
         -String studentName
         -String sourceCode
         -String verdict
-        -String submittedAt
+        -LocalDateTime submittedAt
     }
 
     class ComparisonResult {
@@ -144,28 +81,87 @@ classDiagram
         -String codeB
     }
 
-    class PortalController {
-        -JudgeService judgeService
-        -PlagiarismService plagiarismService
-        +createAssignment(Assignment) Assignment
-        +getAllAssignments() List~Assignment~
-        +submitCode(Submission) Submission
-        +checkPlagiarism(Long id) List~ComparisonResult~
-    }
-
-    class JudgeService {
-        +evaluateCppCode(String sourceCode, String testInput, String expectedOutput, int timeLimitSeconds) String
-    }
-
-    class PlagiarismService {
-        +tokenize(String code) List~String~
-        +winnow(List~String~ tokens, int k, int w) Set~Long~
-        +calculateSimilarity(String codeA, String codeB, String starterCode) double
-    }
-
     PortalController --> JudgeService : uses
     PortalController --> PlagiarismService : uses
-    PortalController ..> Assignment : manages
-    PortalController ..> Submission : manages
-    PortalController ..> ComparisonResult : returns
+    PortalController o-- Assignment : manages
+    PortalController o-- Submission : stores
+    PortalController ..> ComparisonResult : produces
+```
+
+## 3. Sequence Diagrams
+
+### A. Code Submission & File-Redirected Judge Flow
+```mermaid
+sequenceDiagram
+    actor Student
+    participant UI as student.html
+    participant API as PortalController
+    participant Judge as JudgeService
+    participant OS as OS ProcessBuilder / g++
+
+    Student->>UI: Enter Roll No, Name & C++ Code -> Submit
+    UI->>API: POST /api/submissions
+    API->>Judge: evaluateCppCode(sourceCode, testInput, expectedOutput, timeLimit)
+    Judge->>OS: Write temp .cpp & compile with g++
+    alt Compilation Fails (exitCode != 0)
+        Judge-->>API: Return "CE"
+    else Compilation Succeeds
+        Judge->>OS: Redirect stdin (.in) & stdout (.out), run binary with timeout
+        alt Exceeds timeLimitSeconds
+            Judge->>OS: destroyForcibly()
+            Judge-->>API: Return "TLE"
+        else Non-zero Exit Code
+            Judge-->>API: Return "RE"
+        else Normal Exit
+            Judge->>Judge: Read .out file & compare with expectedOutput
+            Judge-->>API: Return "AC" or "WA"
+        end
+    end
+    Judge->>Judge: finally -> cleanupFiles(.cpp, binary, .in, .out)
+    API->>API: Save Submission with verdict
+    API-->>UI: JSON Submission Response
+    UI-->>Student: Display Verdict Badge (AC / WA / CE / TLE / RE)
+```
+
+### B. Plagiarism Detection & Filtering Flow
+```mermaid
+sequenceDiagram
+    actor Instructor
+    participant UI as instructor.html
+    participant API as PortalController
+    participant Plag as PlagiarismService
+
+    Instructor->>UI: Click "Run Plagiarism Check"
+    UI->>API: GET /api/assignments/{id}/plagiarism
+    API->>API: Deduplicate (keep latest submission per studentRollNo)
+    loop For each unique pair (Student A, Student B)
+        API->>Plag: calculateSimilarity(codeA, codeB, starterCode)
+        Plag->>Plag: tokenize() -> strip comments, includes, main, return 0
+        Plag->>Plag: winnow(tokens) -> k=5 polynomial hashes, w=4 window
+        Plag->>Plag: Subtract starterCode fingerprint hashes
+        Plag->>Plag: Blend 65% Sorensen-Dice + 35% LCS (+ <20 token dampening)
+        Plag-->>API: similarityPercentage
+        API->>API: Set flagged = (similarityPercentage >= 75.0)
+    end
+    API-->>UI: JSON ComparisonResult List
+    UI-->>Instructor: Render Table (Flagged Orange / Safe Green) & Apply Filters
+```
+
+## 4. Data Flow Diagram (Level 1 DFD)
+```mermaid
+flowchart TD
+    Inst([Instructor]) -->|Assignment Details, Starter Code & I/O| P1((1.0 Manage Assignments))
+    P1 -->|Store Assignment| D1[(Assignments Store)]
+
+    Stud([Student]) -->|C++ Source Code| P2((2.0 Evaluate Submission))
+    D1 -->|Test Input, Expected Output, Time Limit| P2
+    P2 -->|Compile & Run via File-Redirected I/O| OS[OS Process Runner]
+    OS -->|Exit Status, Timeout & .out File| P2
+    P2 -->|AC / WA / CE / TLE / RE| Stud
+    P2 -->|Save Submission + Verdict| D2[(Submissions Store)]
+
+    Inst -->|Trigger Check & Set UI Filters| P3((3.0 Plagiarism Engine))
+    D1 -->|Starter Code| P3
+    D2 -->|Latest Submissions per Student| P3
+    P3 -->|Pairwise Scores, Flag Status & Code Diffs| Inst
 ```
