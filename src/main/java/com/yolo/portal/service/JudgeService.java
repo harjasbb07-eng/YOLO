@@ -23,11 +23,12 @@ public class JudgeService {
         Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
         Path srcFile = tempDir.resolve("sub_" + uniqueId + ".cpp");
         Path binFile = tempDir.resolve("sub_" + uniqueId + ".out");
+        Path outFile = tempDir.resolve("sub_" + uniqueId + "_out.txt"); // New temp file for stdout
 
         try {
             Files.writeString(srcFile, sourceCode != null ? sourceCode : "");
 
-            // 1. Compile with g++ (output discarded so the pipe can never fill up and hang)
+            // 1. Compile
             ProcessBuilder compilePb = new ProcessBuilder("g++", "-O2", srcFile.toString(), "-o", binFile.toString());
             compilePb.redirectErrorStream(true);
             compilePb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
@@ -43,9 +44,10 @@ public class JudgeService {
                 return "CE";
             }
 
-            // 2. Execute compiled binary (stderr discarded)
+            // 2. Execute compiled binary
             ProcessBuilder execPb = new ProcessBuilder(binFile.toString());
             execPb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            execPb.redirectOutput(ProcessBuilder.Redirect.to(outFile.toFile())); // Redirect stdout to file to prevent buffer lock
             Process execProc = execPb.start();
 
             // Feed stdin
@@ -61,8 +63,10 @@ public class JudgeService {
             // 3. Enforce time limit
             int limit = timeLimitSeconds > 0 ? timeLimitSeconds : DEFAULT_TIME_LIMIT_SECONDS;
             boolean finishedInTime = execProc.waitFor(limit, TimeUnit.SECONDS);
+            
             if (!finishedInTime) {
                 execProc.destroyForcibly();
+                execProc.waitFor(); // Confirm termination
                 return "TLE";
             }
 
@@ -70,20 +74,9 @@ public class JudgeService {
                 return "RE";
             }
 
-            // 4. Capture and normalize stdout
-            String actualOutput;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(execProc.getInputStream()))) {
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line.stripTrailing()).append("\n");
-                }
-                actualOutput = sb.toString().trim();
-            }
-
-            String expectedNormalized = expectedOutput != null
-                    ? expectedOutput.replace("\r\n", "\n").trim()
-                    : "";
+            // 4. Capture and normalize stdout from file
+            String actualOutput = Files.exists(outFile) ? normalize(Files.readString(outFile)) : "";
+            String expectedNormalized = normalize(expectedOutput);
 
             return actualOutput.equals(expectedNormalized) ? "AC" : "WA";
 
@@ -93,8 +86,17 @@ public class JudgeService {
             try {
                 Files.deleteIfExists(srcFile);
                 Files.deleteIfExists(binFile);
+                Files.deleteIfExists(outFile); // Cleanup output file
             } catch (IOException ignored) {
             }
         }
+    }
+    private String normalize(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String line : s.replace("\r\n", "\n").split("\n", -1)) {
+            sb.append(line.stripTrailing()).append("\n");
+        }
+        return sb.toString().trim();
     }
 }

@@ -36,3 +36,4 @@ target/
 temp_sub_*
 *.log
 .DS_Store
+data/
