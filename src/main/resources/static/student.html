@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | YOLO Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+        .dashboard-card {
+            border: 1px solid #e3e8ef;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+            background: #ffffff;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        .card-header-custom {
+            background-color: #ffffff;
+            border-bottom: 1px solid #eaedf2;
+            padding: 1rem 1.25rem;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.3rem;
+        }
+        .code-textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-dark px-4 py-2 mb-4 shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">YOLO &mdash; Student Submission Portal</span>
+            <div class="d-flex gap-2">
+                <a href="instructor.html" class="btn btn-outline-light btn-sm">Switch to Instructor Portal</a>
+                <a href="index.html" class="btn btn-secondary btn-sm">Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container px-4 pb-5">
+        <div class="dashboard-card">
+            <div class="card-header-custom">
+                <h5 class="mb-0 fw-semibold text-dark">Submit C++ Solution</h5>
+                <small class="text-muted">Select an active assignment and run automated test cases</small>
+            </div>
+            <div class="p-4">
+                <div id="verdictAlert" class="alert d-none fw-semibold" role="alert"></div>
+
+                <form id="submissionForm">
+                    <div class="mb-3">
+                        <label for="assignmentSelect" class="form-label">Select Assignment</label>
+                        <select id="assignmentSelect" class="form-select form-select-sm" required>
+                            <option value="" disabled selected>Select an Assignment...</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label for="rollNo" class="form-label">Roll Number</label>
+                            <input type="text" id="rollNo" class="form-control form-control-sm" placeholder="e.g., IIB2025014" required>
+                        </div>
+                        <div class="col-sm-6">
+                            <label for="name" class="form-label">Student Name</label>
+                            <input type="text" id="name" class="form-control form-control-sm" placeholder="Enter your full name" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="sourceCode" class="form-label">C++ Source Code</label>
+                        <textarea id="sourceCode" class="form-control code-textarea" rows="12" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;int main() {&#10;    // Write your C++ code here&#10;    return 0;&#10;}" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-sm w-100 py-2 fw-semibold">Submit &amp; Run Test Cases</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/assignments')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('assignmentSelect');
+                if (data && data.length > 0) {
+                    select.innerHTML = '';
+                    data.forEach(a => {
+                        select.innerHTML += `<option value="${a.id}">${a.title}</option>`;
+                    });
+                }
+            })
+            .catch(() => {});
+
+        document.getElementById('submissionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                assignmentId: parseInt(document.getElementById('assignmentSelect').value),
+                studentRollNo: document.getElementById('rollNo').value,
+                studentName: document.getElementById('name').value,
+                sourceCode: document.getElementById('sourceCode').value
+            };
+            
+            const res = await fetch('/api/submissions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            const alertBox = document.getElementById('verdictAlert');
+            alertBox.className = 'alert fw-semibold';
+            alertBox.style.backgroundColor = '';
+            alertBox.style.color = '';
+            
+            if (data.verdict === 'AC') {
+                alertBox.classList.add('alert-success');
+            } else if (data.verdict === 'WA' || data.verdict === 'RE') {
+                alertBox.classList.add('alert-danger');
+            } else if (data.verdict === 'TLE') {
+                alertBox.classList.add('alert-warning');
+            } else if (data.verdict === 'CE') {
+                alertBox.style.backgroundColor = '#fd7e14';
+                alertBox.style.color = '#ffffff';
+            }
+            alertBox.innerText = `Execution Verdict: ${data.verdict}`;
+        };
+    </script>
+</body>
+</html>
