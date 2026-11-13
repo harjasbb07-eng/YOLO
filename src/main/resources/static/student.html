@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Portal | YOLO Portal</title>
+    <title>Student Portal | YOLO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -14,13 +15,11 @@
             font-weight: 700;
             letter-spacing: 0.4px;
         }
-        .dashboard-card {
+        .portal-card {
             border: 1px solid #e3e8ef;
             border-radius: 10px;
             box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
             background: #ffffff;
-            max-width: 760px;
-            margin: 0 auto;
         }
         .card-header-custom {
             background-color: #ffffff;
@@ -30,22 +29,24 @@
             border-top-right-radius: 10px;
         }
         .form-label {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: #475569;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.35rem;
         }
         .code-textarea {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.85rem;
+            font-size: 0.88rem;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
 
+    <!-- Top Portal Navbar -->
     <nav class="navbar navbar-dark bg-dark px-4 py-2 mb-4 shadow-sm">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">YOLO &mdash; Student Submission Portal</span>
+            <span class="navbar-brand mb-0 h1">YOLO &mdash; Student Portal</span>
             <div class="d-flex gap-2">
                 <a href="instructor.html" class="btn btn-outline-light btn-sm">Switch to Instructor Portal</a>
                 <a href="index.html" class="btn btn-secondary btn-sm">Home</a>
@@ -53,92 +54,159 @@
         </div>
     </nav>
 
-    <div class="container px-4 pb-5">
-        <div class="dashboard-card">
+    <div class="container pb-5" style="max-width: 900px;">
+        <div class="portal-card">
             <div class="card-header-custom">
                 <h5 class="mb-0 fw-semibold text-dark">Submit C++ Solution</h5>
-                <small class="text-muted">Select an active assignment and run automated test cases</small>
+                <small class="text-muted">Select an assignment, review the problem statement, and submit your code for automated evaluation</small>
             </div>
-            <div class="p-4">
-                <div id="verdictAlert" class="alert d-none fw-semibold" role="alert"></div>
 
+            <div class="p-4">
                 <form id="submissionForm">
+                    <!-- Assignment Dropdown -->
                     <div class="mb-3">
                         <label for="assignmentSelect" class="form-label">Select Assignment</label>
-                        <select id="assignmentSelect" class="form-select form-select-sm" required>
-                            <option value="" disabled selected>Select an Assignment...</option>
+                        <select id="assignmentSelect" class="form-select" required>
+                            <option value="" disabled selected>-- Select Assignment --</option>
                         </select>
+
+                        <!-- Problem Statement & Time Limit Box -->
+                        <div id="problemBox" class="alert alert-secondary mt-3 mb-0" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong id="probTitle" class="fs-5 text-dark">Problem Statement</strong>
+                                <span class="badge bg-dark" id="probTimeLimit">Time Limit: 2s</span>
+                            </div>
+                            <p id="probDesc" class="mb-0 text-dark" style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.88rem;"></p>
+                        </div>
                     </div>
 
+                    <!-- Student Details -->
                     <div class="row g-3 mb-3">
-                        <div class="col-sm-6">
-                            <label for="rollNo" class="form-label">Roll Number</label>
-                            <input type="text" id="rollNo" class="form-control form-control-sm" placeholder="e.g., IIB2025014" required>
+                        <div class="col-md-6">
+                            <label for="studentRollNo" class="form-label">Roll Number</label>
+                            <input type="text" id="studentRollNo" class="form-control" placeholder="e.g., IIB2025006" required>
                         </div>
-                        <div class="col-sm-6">
-                            <label for="name" class="form-label">Student Name</label>
-                            <input type="text" id="name" class="form-control form-control-sm" placeholder="Enter your full name" required>
+                        <div class="col-md-6">
+                            <label for="studentName" class="form-label">Full Name</label>
+                            <input type="text" id="studentName" class="form-control" placeholder="e.g., Aryan Kumar" required>
                         </div>
                     </div>
 
+                    <!-- C++ Source Code Editor -->
                     <div class="mb-4">
                         <label for="sourceCode" class="form-label">C++ Source Code</label>
-                        <textarea id="sourceCode" class="form-control code-textarea" rows="12" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;int main() {&#10;    // Write your C++ code here&#10;    return 0;&#10;}" required></textarea>
+                        <textarea id="sourceCode" class="form-control code-textarea" rows="13" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;int main() {&#10;    // Write your solution here&#10;    return 0;&#10;}" required></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-success btn-sm w-100 py-2 fw-semibold">Submit &amp; Run Test Cases</button>
+                    <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fw-semibold">Submit Code</button>
                 </form>
+
+                <!-- Verdict Output Box -->
+                <div id="verdictBox" class="alert mt-4 mb-0" style="display: none;"></div>
             </div>
         </div>
     </div>
 
     <script>
-        fetch('/api/assignments')
-            .then(res => res.json())
-            .then(data => {
-                const select = document.getElementById('assignmentSelect');
-                if (data && data.length > 0) {
-                    select.innerHTML = '';
-                    data.forEach(a => {
-                        select.innerHTML += `<option value="${a.id}">${a.title}</option>`;
-                    });
-                }
-            })
-            .catch(() => {});
+        let allAssignments = [];
 
+        async function loadAssignments() {
+            try {
+                const res = await fetch('/api/assignments');
+                allAssignments = await res.json();
+
+                const select = document.getElementById('assignmentSelect');
+                select.innerHTML = '<option value="">-- Select Assignment --</option>';
+
+                allAssignments.forEach(a => {
+                    select.innerHTML += `<option value="${a.id}">${a.title}</option>`;
+                });
+            } catch (err) {
+                console.error('Failed to load assignments:', err);
+            }
+        }
+
+        // Update Problem Statement, Time Limit & Starter Code on assignment selection
+        document.getElementById('assignmentSelect').addEventListener('change', function () {
+            const selectedId = Number(this.value);
+            const assignment = allAssignments.find(a => a.id === selectedId);
+            const box = document.getElementById('problemBox');
+            const codeEditor = document.getElementById('sourceCode');
+
+            if (assignment) {
+                box.style.display = 'block';
+                document.getElementById('probTitle').textContent = assignment.title;
+                document.getElementById('probDesc').textContent = assignment.description || 'No description provided.';
+                document.getElementById('probTimeLimit').textContent = `Time Limit: ${assignment.timeLimit || 2}s`;
+
+                if (codeEditor && assignment.starterCode) {
+                    codeEditor.value = assignment.starterCode;
+                }
+            } else {
+                box.style.display = 'none';
+            }
+        });
+
+        // Handle Code Submission
         document.getElementById('submissionForm').onsubmit = async (e) => {
             e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            const verdictBox = document.getElementById('verdictBox');
+
+            const assignmentId = Number(document.getElementById('assignmentSelect').value);
+            if (!assignmentId) {
+                alert('Please select an assignment first.');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Compiling & Evaluating...';
+
             const payload = {
-                assignmentId: parseInt(document.getElementById('assignmentSelect').value),
-                studentRollNo: document.getElementById('rollNo').value,
-                studentName: document.getElementById('name').value,
+                assignmentId: assignmentId,
+                studentRollNo: document.getElementById('studentRollNo').value.trim(),
+                studentName: document.getElementById('studentName').value.trim(),
                 sourceCode: document.getElementById('sourceCode').value
             };
-            
-            const res = await fetch('/api/submissions', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            
-            const alertBox = document.getElementById('verdictAlert');
-            alertBox.className = 'alert fw-semibold';
-            alertBox.style.backgroundColor = '';
-            alertBox.style.color = '';
-            
-            if (data.verdict === 'AC') {
-                alertBox.classList.add('alert-success');
-            } else if (data.verdict === 'WA' || data.verdict === 'RE') {
-                alertBox.classList.add('alert-danger');
-            } else if (data.verdict === 'TLE') {
-                alertBox.classList.add('alert-warning');
-            } else if (data.verdict === 'CE') {
-                alertBox.style.backgroundColor = '#fd7e14';
-                alertBox.style.color = '#ffffff';
+
+            try {
+                const res = await fetch('/api/submissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                verdictBox.style.display = 'block';
+                verdictBox.className = 'alert mt-4 mb-0 ';
+
+                if (data.verdict === 'AC') {
+                    verdictBox.classList.add('alert-success');
+                    verdictBox.innerHTML = `<strong>Verdict: AC (Accepted)</strong> &mdash; All test cases passed!`;
+                } else if (data.verdict === 'WA') {
+                    verdictBox.classList.add('alert-danger');
+                    verdictBox.innerHTML = `<strong>Verdict: WA (Wrong Answer)</strong> &mdash; Output did not match expected output.`;
+                } else if (data.verdict === 'TLE') {
+                    verdictBox.classList.add('alert-warning');
+                    verdictBox.innerHTML = `<strong>Verdict: TLE (Time Limit Exceeded)</strong> &mdash; Execution exceeded time limit.`;
+                } else if (data.verdict === 'CE') {
+                    verdictBox.classList.add('alert-danger');
+                    verdictBox.innerHTML = `<strong>Verdict: CE (Compilation Error)</strong> &mdash; Check your C++ syntax.`;
+                } else {
+                    verdictBox.classList.add('alert-danger');
+                    verdictBox.innerHTML = `<strong>Verdict: ${data.verdict || 'RE'}</strong> &mdash; Runtime or evaluation error.`;
+                }
+            } catch (err) {
+                verdictBox.style.display = 'block';
+                verdictBox.className = 'alert alert-danger mt-4 mb-0';
+                verdictBox.textContent = 'Error submitting code. Please ensure the server is running.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Code';
             }
-            alertBox.innerText = `Execution Verdict: ${data.verdict}`;
         };
+
+        loadAssignments();
     </script>
 </body>
 </html>
