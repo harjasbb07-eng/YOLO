@@ -1,4 +1,4 @@
- YOLO — Your Own Lab Orchestrator
+# YOLO — Your Own Lab Orchestrator
 
 **Automated C++ Code Assessment & Plagiarism Detection Portal**
 *Software Engineering Course Project*
