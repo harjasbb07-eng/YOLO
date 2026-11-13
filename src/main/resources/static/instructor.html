@@ -66,6 +66,13 @@
             color: #64748b;
             font-size: 0.9rem;
         }
+        .filter-bar {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
+            max-width: 720px;
+        }
     </style>
 </head>
 <body>
@@ -148,6 +155,27 @@
                     </div>
 
                     <div class="p-4">
+                        <!-- Filter Controls: Flagged Toggle & Min Similarity % -->
+                        <div class="filter-bar d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="flaggedOnlyToggle">
+                                <label class="form-check-label small fw-semibold text-dark" for="flaggedOnlyToggle">
+                                    Show Flagged Only
+                                </label>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <label for="minSimilarityInput" class="small fw-semibold text-secondary mb-0 text-nowrap">
+                                    Above Similarity (%):
+                                </label>
+                                <input type="number" id="minSimilarityInput" class="form-control form-control-sm"
+                                       style="width: 85px;" min="0" max="100" step="1" placeholder="e.g. 50">
+                                <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 0.78rem;">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="compact-table-wrapper">
                             <div class="table-responsive border rounded">
                                 <table class="table table-sm table-hover table-compact mb-0">
@@ -236,8 +264,59 @@
         };
 
         let currentResults = [];
+        let hasFetchedResults = false;
 
-        // 3. Run Plagiarism Check with empty-state handling & orange flagged badge
+        // Render table rows based on currentResults + active filters
+        function renderFilteredResults() {
+            const tbody = document.getElementById('similarityTableBody');
+            if (!hasFetchedResults) return;
+
+            if (!currentResults || currentResults.length === 0) {
+                tbody.innerHTML = `<tr>
+                    <td colspan="4" class="empty-state">
+                        No plagiarism results available for this assignment yet (at least 2 student submissions are required).
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            const flaggedOnly = document.getElementById('flaggedOnlyToggle').checked;
+            const minSimRaw = document.getElementById('minSimilarityInput').value.trim();
+            const minSim = minSimRaw === '' ? 0 : parseFloat(minSimRaw);
+
+            tbody.innerHTML = '';
+            let visibleCount = 0;
+
+            currentResults.forEach((row, index) => {
+                if (flaggedOnly && !row.flagged) return;
+                if (!isNaN(minSim) && row.similarityPercentage < minSim) return;
+
+                visibleCount++;
+                const badge = row.flagged 
+                    ? '<span class="badge" style="background-color: #fd7e14; color: #ffffff;">FLAGGED FOR REVIEW</span>' 
+                    : '<span class="badge bg-success">SAFE</span>';
+                
+                // Pass original index so Compare Code modal always opens the exact pair
+                const actionBtn = `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.78rem;" onclick="showCompare(${index})">Compare Code</button>`;
+                
+                tbody.innerHTML += `<tr>
+                    <td><span class="pair-badge">${row.studentRollA} &harr; ${row.studentRollB}</span></td>
+                    <td class="fw-semibold">${row.similarityPercentage}%</td>
+                    <td>${badge}</td>
+                    <td class="text-end">${actionBtn}</td>
+                </tr>`;
+            });
+
+            if (visibleCount === 0) {
+                tbody.innerHTML = `<tr>
+                    <td colspan="4" class="empty-state">
+                        No submission pairs match the current filter criteria.
+                    </td>
+                </tr>`;
+            }
+        }
+
+        // 3. Run Plagiarism Check
         document.getElementById('runCheckBtn').onclick = async () => {
             const id = document.getElementById('assignmentSelect').value;
             const tbody = document.getElementById('similarityTableBody');
@@ -253,32 +332,18 @@
 
             const res = await fetch(`/api/assignments/${id}/plagiarism`);
             currentResults = await res.json();
-            tbody.innerHTML = '';
-
-            if (!currentResults || currentResults.length === 0) {
-                tbody.innerHTML = `<tr>
-                    <td colspan="4" class="empty-state">
-                        No plagiarism results available for this assignment yet (at least 2 student submissions are required).
-                    </td>
-                </tr>`;
-                return;
-            }
-
-            currentResults.forEach((row, index) => {
-                const badge = row.flagged 
-                    ? '<span class="badge" style="background-color: #fd7e14; color: #ffffff;">FLAGGED FOR REVIEW</span>' 
-                    : '<span class="badge bg-success">SAFE</span>';
-                
-                const actionBtn = `<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.78rem;" onclick="showCompare(${index})">Compare Code</button>`;
-                
-                tbody.innerHTML += `<tr>
-                    <td><span class="pair-badge">${row.studentRollA} &harr; ${row.studentRollB}</span></td>
-                    <td class="fw-semibold">${row.similarityPercentage}%</td>
-                    <td>${badge}</td>
-                    <td class="text-end">${actionBtn}</td>
-                </tr>`;
-            });
+            hasFetchedResults = true;
+            renderFilteredResults();
         };
+
+        // Live filter listeners
+        document.getElementById('flaggedOnlyToggle').addEventListener('change', renderFilteredResults);
+        document.getElementById('minSimilarityInput').addEventListener('input', renderFilteredResults);
+        document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+            document.getElementById('flaggedOnlyToggle').checked = false;
+            document.getElementById('minSimilarityInput').value = '';
+            renderFilteredResults();
+        });
 
         // 4. Side-by-side comparison modal using safe textContent
         function showCompare(index) {
